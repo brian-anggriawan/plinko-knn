@@ -91,24 +91,42 @@ function runPrediction() {
     return;
   }
 
-  const k = Math.min(10, outputs.length);
-  const rawData = _.map(outputs, (row) => [row[0], _.last(row)]);
+  // Use all 3 features: dropPosition, bounciness, size (same as knn training)
+  // For prediction point: use inputted position + median bounciness + median size from data
+  const sortedBounciness = _.sortBy(outputs.map((r) => r[1]));
+  const sortedSize = _.sortBy(outputs.map((r) => r[2]));
+  const medianBounciness =
+    sortedBounciness[Math.floor(sortedBounciness.length / 2)];
+  const medianSize = sortedSize[Math.floor(sortedSize.length / 2)];
 
-  const positions = rawData.map((row) => row[0]);
-  const min = _.min(positions);
-  const max = _.max(positions);
+  // k = sqrt of dataset size, min 10, max 100
+  const k = Math.min(100, Math.max(10, Math.floor(Math.sqrt(outputs.length))));
 
-  const normalizedData = rawData.map((row) => {
-    const norm = max === min ? 0 : (row[0] - min) / (max - min);
-    return [norm, row[1]];
+  // Normalize all 3 features across the dataset + prediction point together
+  const featureCount = 3;
+  const rawData = outputs.map((row) => [row[0], row[1], row[2], row[3]]);
+  const predictionRow = [dropPosition, medianBounciness, medianSize, null];
+
+  const combined = [...rawData, predictionRow];
+  const cloned = _.cloneDeep(combined);
+
+  _.range(featureCount).forEach((fi) => {
+    const vals = cloned.map((r) => r[fi]);
+    const min = _.min(vals);
+    const max = _.max(vals);
+    cloned.forEach((r) => {
+      r[fi] = max === min ? 0 : (r[fi] - min) / (max - min);
+    });
   });
 
-  const normalizedPoint = [
-    max === min ? 0 : (dropPosition - min) / (max - min),
-  ];
+  const normalizedData = cloned.slice(0, rawData.length);
+  const normalizedPoint = cloned[cloned.length - 1].slice(0, featureCount);
 
   const neighbors = _.chain(normalizedData)
-    .map((row) => [distance([row[0]], normalizedPoint), row[1]])
+    .map((row) => [
+      distance(row.slice(0, featureCount), normalizedPoint),
+      row[3],
+    ])
     .sortBy((row) => row[0])
     .slice(0, k)
     .value();
@@ -116,7 +134,7 @@ function runPrediction() {
   const bucketCounts = _.countBy(neighbors, (row) => row[1]);
 
   const resultsEl = document.querySelector("#prediction-results");
-  let html = '<div class="prediction-title">Prediction Results:</div>';
+  let html = `<div class="prediction-title">Prediction Results <span style="font-weight:normal;font-size:11px;color:#888;">(k=${k}, features: position+bounciness+size)</span>:</div>`;
 
   for (let i = 1; i <= 10; i++) {
     const count = bucketCounts[i] || 0;
