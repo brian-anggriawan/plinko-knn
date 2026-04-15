@@ -1,0 +1,114 @@
+.target-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 10px;
+  flex-direction: column;
+  position: relative;
+}
+
+canvas {
+  border: 1px solid gray;
+}
+
+.bucket-labels {
+  display: flex;
+  max-width: 795px;
+  justify-content: space-around;
+}
+
+.bucket-labels > div {
+  z-index: 10;
+  margin-top: -67px;
+  min-width: 79.5px;
+  text-align: center;
+}
+
+.bucket-labels .score {
+  font-weight: bolder;
+  font-size: 20px;
+}
+
+.wrapper {
+  margin: 20px;
+}
+
+.x-axis {
+  position: absolute;
+  z-index: 10;
+  top: 0px;
+  left: 10px;
+}
+
+/* .x-axis span.neck {
+  display: inline-block;
+  min-width: 200px;
+  border-bottom: 1px solid black;
+  position: relative;
+  bottom: 6px;
+  right: -9px;
+}
+
+.x-axis span.head {
+  font-size: 18px;
+} */
+
+.x-position {
+  position: absolute;
+  right: 10px;
+}
+
+.target-wrapper > div {
+  position: relative;
+}
+
+.prediction-results {
+  margin-top: 12px;
+}
+
+.prediction-empty {
+  color: #888;
+  font-style: italic;
+  font-size: 13px;
+}
+
+.prediction-title {
+  font-weight: bold;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+
+.prediction-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+  font-size: 13px;
+}
+
+.prediction-bucket {
+  min-width: 68px;
+  font-weight: 600;
+}
+
+.prediction-bar-wrap {
+  flex: 1;
+  background: #e0e0e0;
+  border-radius: 4px;
+  height: 12px;
+  overflow: hidden;
+}
+
+.prediction-bar {
+  height: 100%;
+  background: #03a9f4;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.prediction-percent {
+  min-width: 36px;
+  text-align: right;
+  color: #0277bd;
+  font-weight: bold;
+}
