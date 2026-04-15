@@ -91,54 +91,43 @@ function runPrediction() {
     return;
   }
 
-  // Use all 3 features: dropPosition, bounciness, size (same as knn training)
-  // For prediction point: use inputted position + median bounciness + median size from data
-  const sortedBounciness = _.sortBy(outputs.map((r) => r[1]));
-  const sortedSize = _.sortBy(outputs.map((r) => r[2]));
-  const medianBounciness =
-    sortedBounciness[Math.floor(sortedBounciness.length / 2)];
-  const medianSize = sortedSize[Math.floor(sortedSize.length / 2)];
+  // Use only drop position as feature (the only thing the user controls).
+  // Bounciness and size are random — averaging over them by using position only
+  // gives the true empirical probability for a given drop position.
+  const positions = outputs.map((r) => r[0]);
+  const posMin = _.min(positions);
+  const posMax = _.max(positions);
+  const normalize = (x) =>
+    posMax === posMin ? 0 : (x - posMin) / (posMax - posMin);
 
-  // k = sqrt of dataset size, min 10, max 100
-  const k = Math.min(100, Math.max(10, Math.floor(Math.sqrt(outputs.length))));
+  const normalizedPoint = normalize(dropPosition);
 
-  // Normalize all 3 features across the dataset + prediction point together
-  const featureCount = 3;
-  const rawData = outputs.map((row) => [row[0], row[1], row[2], row[3]]);
-  const predictionRow = [dropPosition, medianBounciness, medianSize, null];
+  // Compute absolute distance for each data point
+  const withDistances = outputs.map((row) => [
+    Math.abs(normalize(row[0]) - normalizedPoint),
+    row[3],
+  ]);
 
-  const combined = [...rawData, predictionRow];
-  const cloned = _.cloneDeep(combined);
+  const sorted = _.sortBy(withDistances, (r) => r[0]);
 
-  _.range(featureCount).forEach((fi) => {
-    const vals = cloned.map((r) => r[fi]);
-    const min = _.min(vals);
-    const max = _.max(vals);
-    cloned.forEach((r) => {
-      r[fi] = max === min ? 0 : (r[fi] - min) / (max - min);
-    });
-  });
+  // Base k = sqrt(n), but include ALL ties at the threshold distance
+  // so equal-position balls are never partially sampled
+  const baseK = Math.min(
+    outputs.length,
+    Math.max(50, Math.floor(Math.sqrt(outputs.length))),
+  );
+  const threshold = sorted[baseK - 1][0];
+  const neighbors = sorted.filter((r) => r[0] <= threshold);
 
-  const normalizedData = cloned.slice(0, rawData.length);
-  const normalizedPoint = cloned[cloned.length - 1].slice(0, featureCount);
-
-  const neighbors = _.chain(normalizedData)
-    .map((row) => [
-      distance(row.slice(0, featureCount), normalizedPoint),
-      row[3],
-    ])
-    .sortBy((row) => row[0])
-    .slice(0, k)
-    .value();
-
-  const bucketCounts = _.countBy(neighbors, (row) => row[1]);
+  const total = neighbors.length;
+  const bucketCounts = _.countBy(neighbors, (r) => r[1]);
 
   const resultsEl = document.querySelector("#prediction-results");
-  let html = `<div class="prediction-title">Prediction Results <span style="font-weight:normal;font-size:11px;color:#888;">(k=${k}, features: position+bounciness+size)</span>:</div>`;
+  let html = `<div class="prediction-title">Prediction Results <span style="font-weight:normal;font-size:11px;color:#888;">(n=${total} neighbors)</span>:</div>`;
 
   for (let i = 1; i <= 10; i++) {
     const count = bucketCounts[i] || 0;
-    const percent = Math.round((count / k) * 100);
+    const percent = Math.round((count / total) * 100);
     html += `
       <div class="prediction-item">
         <span class="prediction-bucket">Bucket #${i}</span>
